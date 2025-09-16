@@ -1,0 +1,49 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.out/
+
+# Compilación y dependencias
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildnumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Eclipse
+.settings/
+.project
+.classpath
+*.launch
+*.tmp
+
+# IntelliJ
+*.iml
+*.iws
+out/
+system/
+production/
+
+# Base de datos H2
+data/
+*.db
+*.trace.db
+
+# Archivos temporales
+*.tmp
+*.temp

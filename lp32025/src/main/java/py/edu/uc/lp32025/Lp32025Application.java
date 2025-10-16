@@ -1,0 +1,13 @@
+// src/main/java/py.edu.uc.lp32025/Lp32025Application.java
+package py.edu.uc.lp32025;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Lp32025Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Lp32025Application.class, args);
+    }
+}

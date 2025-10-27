@@ -2,24 +2,25 @@
 package py.edu.uc.lp32025.domain;
 
 import jakarta.persistence.*;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.validation.constraints.Pattern;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "personas")
-@Inheritance(strategy = InheritanceType.JOINED) // Estrategia JOINED para herencia
-public class Persona {
+@Inheritance(strategy = InheritanceType.JOINED)
+public abstract class Persona {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String nombre;
-    private String apellido; // Nuevo campo
+    private String apellido;
     private LocalDate fechaNacimiento;
+
+    // ✅ Validación: número de documento debe tener entre 1 y 20 dígitos
+    @Pattern(regexp = "^\\d{1,20}$", message = "El número de documento debe tener entre 1 y 20 dígitos")
     private String numeroDocumento;
 
     // Getters y Setters
@@ -39,7 +40,6 @@ public class Persona {
         this.nombre = nombre;
     }
 
-    // Getter y Setter para el nuevo campo 'apellido'
     public String getApellido() {
         return apellido;
     }
@@ -63,4 +63,36 @@ public class Persona {
     public void setNumeroDocumento(String numeroDocumento) {
         this.numeroDocumento = numeroDocumento;
     }
+
+    // ✅ 1. Método abstracto para calcular salario
+    public abstract BigDecimal calcularSalario();
+
+    // ✅ 2. Método concreto que puede ser sobrescrito
+    public String obtenerInformacionCompleta() {
+        return "Nombre: " + nombre + " " + apellido +
+                ", Documento: " + numeroDocumento +
+                ", Fecha Nacimiento: " + fechaNacimiento;
+    }
+
+    // ✅ 3. Método template para calcular impuestos
+    public BigDecimal calcularImpuestos() {
+        BigDecimal impuestoBase = calcularImpuestoBase();
+        BigDecimal deducciones = calcularDeducciones();
+        BigDecimal impuestoFinal = impuestoBase.subtract(deducciones);
+
+        // Asegurar que no sea negativo
+        return impuestoFinal.max(BigDecimal.ZERO);
+    }
+
+    // ✅ 3b. Método concreto para calcular impuesto base (10% del salario)
+    public BigDecimal calcularImpuestoBase() {
+        BigDecimal salario = calcularSalario();
+        return salario.multiply(BigDecimal.valueOf(0.10));
+    }
+
+    // ✅ 3c. Método abstracto para calcular deducciones
+    public abstract BigDecimal calcularDeducciones();
+
+    // ✅ 4. Método abstracto para validar datos específicos
+    public abstract boolean validarDatosEspecificos();
 }

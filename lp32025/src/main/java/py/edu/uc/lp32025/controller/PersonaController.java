@@ -5,8 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import py.edu.uc.lp32025.domain.Persona;
+import py.edu.uc.lp32025.service.RemuneracionesService;// ✅ Importar el servicio
 import py.edu.uc.lp32025.repository.PersonaRepository;
-
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
@@ -21,13 +21,24 @@ public class PersonaController {
     @Autowired
     private PersonaRepository personaRepository;
 
+    @Autowired
+    private RemuneracionesService remuneracionesService; // ✅ Inyectar el servicio
+
     /**
-     * Endpoint para obtener una lista de todas las personas.
+     * Endpoint para obtener una lista de todas las personas o filtrar por nombre.
      * Responde a peticiones GET en "/api/personas".
      */
     @GetMapping
-    public List<Persona> listarTodas() {
-        return personaRepository.findAll();
+    public List<Persona> listarTodas(
+            @RequestParam(required = false) String nombre) { // ✅ Parámetro opcional para filtrar
+
+        if (nombre != null && !nombre.trim().isEmpty()) {
+            // Filtrar personas por nombre (case insensitive)
+            return remuneracionesService.filtrarPersonasPorNombre(nombre);
+        } else {
+            // Si no se proporciona nombre, devolver todas las personas
+            return personaRepository.findAll();
+        }
     }
 
     /**
@@ -67,6 +78,7 @@ public class PersonaController {
 
         return ResponseEntity.created(location).body(personaGuardada);
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<Persona> obtenerPorId(@PathVariable Long id) {
         return personaRepository.findById(id)

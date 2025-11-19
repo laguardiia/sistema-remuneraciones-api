@@ -2,113 +2,214 @@
 
 ## Descripción
 
-Este proyecto implementa una aplicación Spring Boot para la gestión de empleados, demostrando conceptos avanzados de programación orientada a objetos como herencia, polimorfismo, métodos abstractos, concretos y template, validación de datos, persistencia en batch y manejo de errores.
+Este proyecto implementa una aplicación Spring Boot robusta para la gestión de recursos humanos. Demuestra el dominio de conceptos avanzados de Programación Orientada a Objetos y diseño de software, incluyendo:
 
-## Arquitectura Implementada
+* **Herencia y Polimorfismo:** Jerarquías complejas en el modelo de dominio (Personas, Empleados, Gerentes) y en capas técnicas (Controladores y Mappers).
+* **Interfaces y Contratos:** Uso de `Permisionable` y `Mapeable` para definir comportamientos transversales.
+* **Patrones de Diseño:** Uso de *Template Method* en mappers y *Strategy* implícito en los cálculos de nómina.
+* **Manejo de Errores Global:** Centralización de excepciones de negocio y técnicas.
+* **Persistencia:** Operaciones CRUD y procesamiento Batch (lotes).
 
-### Capa de Dominio
-- **`Persona` (Clase Abstracta)**: Clase base que define la estructura común y comportamientos abstractos.
-  - **`EmpleadoTiempoCompleto`**: Empleado con salario fijo y departamento.
-  - **`EmpleadoPorHora`**: Empleado pagado por horas trabajadas.
-  - **`Contratista`**: Profesional contratado por proyectos.
+## Arquitectura del Sistema
 
-### Capa de Persistencia
-- **Repositorios**: `PersonaRepository`, `EmpleadoTiempoCompletoRepository`, `EmpleadoPorHoraRepository`, `ContratistaRepository`.
-- **Base de Datos**: H2 en modo archivo para persistencia local.
+### 1. Capa de Dominio (Modelo)
+Jerarquía rica que modela la realidad del negocio:
+* **`Persona` (Abstracta)**: Entidad base.
+    * **`EmpleadoTiempoCompleto`**: Empleado regular.
+        * **`Gerente`**: Extiende de Tiempo Completo. Implementa `PermisionableGerente` para aprobar solicitudes.
+    * **`EmpleadoPorHora`**: Cálculo de salario basado en tarifa/hora.
+    * **`Contratista`**: Pago por proyecto y gestión de contratos.
+* **Interfaces**:
+    * `Permisionable`: Define la capacidad de solicitar vacaciones/permisos.
+    * `Mapeable`: Interfaz polimórfica implementada por `Persona`, `Vehiculo` y `Edificio` para geolocalización y avatares (Mock).
 
-### Capa de Servicio
-- **`EmpleadoTiempoCompletoService`**: Gestión de operaciones CRUD y batch para empleados de tiempo completo.
-- **`RemuneracionesService`**: Cálculos de nómina, generación de reportes y filtrado de empleados.
-- **`EmpleadoPorHoraService`**, **`ContratistaService`**: Servicios específicos para otros tipos de empleados.
+### 2. Capa de Controladores (REST)
+Implementación de herencia para reutilización de código:
+* **`BaseController`**: Clase abstracta con utilidades de respuesta HTTP estandarizadas y logging.
+* **Controladores Específicos**: `GerenteController`, `EmpleadoTiempoCompletoController`, etc., heredan del base.
+* **`RemuneracionesController`**: Gestión de nómina y lógica de negocio transversal.
 
-### Capa de Controlador
-- **`PersonaController`**: CRUD de personas base.
-- **`EmpleadoTiempoCompletoController`**: CRUD y operaciones específicas para empleados de tiempo completo (impuestos, batch).
-- **`EmpleadoPorHoraController`**, **`ContratistaController`**: CRUD para otros tipos de empleados.
-- **`RemuneracionesController`**: Endpoints para cálculos de nómina, reportes y filtrado por nombre.
+### 3. Capa de Mappers (DTOs)
+Jerarquía de conversión de datos para desacoplar la API de la base de datos:
+* **`BaseMapper<E, D>`**: Interfaz genérica.
+* **`AbstractBaseMapper`**: Clase base que maneja conversiones de Listas automáticamente.
+* **Implementaciones**: `EmpleadoTiempoCompletoMapper`, `ExternalIntegrationMapper` (simulación de sistemas legacy), etc.
 
-### Capa de DTOs
-- `EmpleadoDTO`, `BatchResponse`, `ReporteEmpleadoDto`, `ImpuestosResponse`, `BatchEmpleadosRequest`, `BaseResponseDto`.
+### 4. Servicios y Lógica de Negocio
+* **`RemuneracionesService`**: Orquestador principal. Calcula nóminas polimórficas y valida reglas de negocio (ej. límite de 20 días de vacaciones).
+* **`NominaUtils`**: Utilitario para reportes JSON y cálculos estadísticos.
+* **Validaciones**: Reglas de negocio estrictas (ej. >20 días solo Gerentes) lanzando excepciones personalizadas (`DiasInsuficientesException`).
 
-### Manejo de Errores
-- **`GlobalExceptionHandler`**: Manejo centralizado de excepciones con respuestas estructuradas.
+---
 
 ## Instrucciones de Ejecución
 
-1.  **Prerrequisitos**:
-    - Java 21
-    - Maven 3.6.x o superior
-    - Git
+### Prerrequisitos
+- Java 21
+- Maven 3.6+
+- Git
 
-2.  **Clonar el Repositorio**:
+### Pasos para levantar el proyecto
+
+1.  **Clonar el Repositorio**:
     ```bash
-    git clone <https://github.com/laguardiia/glaguardia-tp-lp3-2025>
-    cd <lp32025>
+    git clone <URL_DEL_REPOSITORIO>
     ```
 
-3.  **Construir el Proyecto**:
+2.  **Construir el Proyecto**:
     ```bash
     mvn clean install
     ```
 
-4.  **Ejecutar la Aplicación**:
+3.  **Ejecutar**:
     ```bash
     mvn spring-boot:run
     ```
-    La aplicación se ejecutará en `http://localhost:8080`.
+    La aplicación iniciará en `http://localhost:8080`.
 
-5.  **Acceder a la Consola H2 (opcional)**:
-    - URL: `http://localhost:8080/h2-console`
-    - Driver Class: `org.h2.Driver`
-    - JDBC URL: `jdbc:h2:file:./data/lp32025db`
-    - User Name: `sa`
-    - Password: `password` (o dejar vacío si no se configuró)
+4.  **Base de Datos (H2)**:
+    * La base de datos se guarda en archivo local: `C:/data/lp32025db`.
+    * Consola H2: `http://localhost:8080/h2-console`
+    * JDBC URL: `jdbc:h2:file:C:/data/lp32025db`
+    * User: `sa` / Password: `password`
 
-## Ejemplos de comandos cURL
+---
 
-### 1. Operación Batch con datos válidos
+## Guía de Pruebas y Endpoints (cURL)
+
+A continuación, se presentan los comandos para probar el flujo completo del sistema, desde la carga de datos hasta la validación de excepciones de negocio.
+
+### 1. Carga Inicial de Datos (Setup)
+
+Primero, poblamos la base de datos utilizando la nueva jerarquía de controladores.
+
+**1.1. Crear un Gerente (ID: 1)**
+*Nota: Tiene autoridad para aprobar y derecho a >20 días de vacaciones.*
+```bash
+curl -X POST http://localhost:8080/api/gerentes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "Carlos",
+    "apellido": "Jefe",
+    "fechaNacimiento": "1980-05-20",
+    "numeroDocumento": "10001",
+    "numeroEmpleado": "G001",
+    "salarioMensual": 15000000,
+    "departamento": "Dirección",
+    "nivelAutoridad": 5
+  }'
+```
+
+**1.2. Crear Empleado Tiempo Completo (ID: 2)**
+
+```bash
+curl -X POST http://localhost:8080/api/empleados \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "Ana",
+    "apellido": "Dev",
+    "fechaNacimiento": "1995-08-15",
+    "numeroDocumento": "20001",
+    "numeroEmpleado": "E001",
+    "salarioMensual": 6500000,
+    "departamento": "IT"
+  }'
+```
+
+**1.3. Crear Empleado Por Hora (ID: 3)**
+
+```bash
+curl -X POST http://localhost:8080/api/empleados-por-hora \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "Pedro",
+    "apellido": "Parttime",
+    "fechaNacimiento": "1998-01-10",
+    "numeroDocumento": "30001",
+    "numeroEmpleado": "H001",
+    "tarifaPorHora": 50000,
+    "horasTrabajadas": 45
+  }'
+```
+
+**1.4. Crear Contratista (ID: 4)**
+
+```bash
+curl -X POST http://localhost:8080/api/contratistas \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "Laura",
+    "apellido": "Externa",
+    "fechaNacimiento": "1990-03-20",
+    "numeroDocumento": "40001",
+    "numeroEmpleado": "C001",
+    "montoPorProyecto": 5000000,
+    "proyectosCompletados": 2,
+    "fechaFinContrato": "2025-12-31"
+  }'
+```
+
+**1.5. Carga Batch (Lotes)**
+
 ```bash
 curl -X POST http://localhost:8080/api/empleados/batch \
   -H "Content-Type: application/json" \
   -d '[
-    {
-      "nombre": "Ana",
-      "apellido": "Rodríguez",
-      "fechaNacimiento": "1990-05-15",
-      "numeroDocumento": "12345678",
-      "salarioMensual": 3500000,
-      "departamento": "Marketing"
-    },
-    {
-      "nombre": "Pedro",
-      "apellido": "López",
-      "fechaNacimiento": "1988-12-20",
-      "numeroDocumento": "87654321",
-      "salarioMensual": 4000000,
-      "departamento": "Ventas"
-    }
+    { "nombre": "Batch1", "apellido": "User", "fechaNacimiento": "1992-01-01", "numeroDocumento": "90001", "numeroEmpleado": "B001", "salarioMensual": 3000000, "departamento": "Ventas" },
+    { "nombre": "Batch2", "apellido": "User", "fechaNacimiento": "1993-01-01", "numeroDocumento": "90002", "numeroEmpleado": "B002", "salarioMensual": 3100000, "departamento": "Ventas" }
   ]'
-### 2. Operación Batch con datos inválidos
-curl -X POST http://localhost:8080/api/empleados/batch \
-  -H "Content-Type: application/json" \
-  -d '[
-    {
-      "nombre": "Carlos",
-      "apellido": "Mendoza",
-      "fechaNacimiento": "1985-06-15",
-      "numeroDocumento": "123456789012345678901", // Inválido (más de 20 dígitos)
-      "salarioMensual": 2000000, // Inválido (menor al mínimo)
-      "departamento": "Soporte"
-    }
-  ]'
-### 3. Consulta de nómina total
-curl -X GET http://localhost:8080/api/remuneraciones/total-remuneraciones
+```
 
-### 4. Filtrar personas por nombre
-curl -X GET "http://localhost:8080/api/personas?nombre=ana"
+-----
 
-### 5. Consultar impuestos de un empleado específico
-curl -X GET http://localhost:8080/api/empleados/1/impuestos
+### 2\. Pruebas de Polimorfismo y Mappers
 
+**2.1. Listar Nómina Completa**
+*Prueba la inyección de la jerarquía de mappers. Devuelve una lista polimórfica de DTOs.*
 
+```bash
+curl -X GET http://localhost:8080/api/remuneraciones/empleados
+```
 
+**2.2. Consultar Impuestos (Solo Tiempo Completo)**
+*Calcula impuestos para el empleado ID 2.*
+
+```bash
+curl -X GET http://localhost:8080/api/empleados/2/impuestos
+```
+
+-----
+
+### 3\. Pruebas de Reglas de Negocio y Excepciones
+
+**3.1. Caso Éxito: Solicitud Válida**
+*Empleado regular solicita 15 días (permitido).*
+
+```bash
+curl -X POST "http://localhost:8080/api/remuneraciones/empleados/2/solicitar-dias?tipoSolicitud=VACACIONES&fechaInicio=2025-07-01&fechaFin=2025-07-15"
+```
+
+**3.2. Caso Error: Excepción de Negocio (`DiasInsuficientesException`)**
+*Regla: Empleado regular NO puede pedir \> 20 días. Debe retornar error 400 personalizado.*
+
+```bash
+curl -X POST "http://localhost:8080/api/remuneraciones/empleados/2/solicitar-dias?tipoSolicitud=VACACIONES&fechaInicio=2025-08-01&fechaFin=2025-08-25"
+```
+
+*Respuesta esperada:* JSON `ErrorDto` indicando que excede el límite.
+
+**3.3. Caso Éxito: Privilegio de Gerente**
+*El Gerente (ID 1) SÍ puede solicitar más de 20 días.*
+
+```bash
+curl -X POST "http://localhost:8080/api/remuneraciones/empleados/1/solicitar-dias?tipoSolicitud=VACACIONES&fechaInicio=2025-09-01&fechaFin=2025-09-25"
+```
+
+**3.4. Caso Error: Recurso No Encontrado (`EmpleadoNoEncontradoException`)**
+
+```bash
+curl -X POST "http://localhost:8080/api/remuneraciones/empleados/999/solicitar-dias?tipoSolicitud=VACACIONES&fechaInicio=2025-01-01&fechaFin=2025-01-10"
+```
+
+```
+```

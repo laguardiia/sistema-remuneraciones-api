@@ -2,16 +2,23 @@
 package py.edu.uc.lp32025.domain;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min; // Importante
+import jakarta.validation.constraints.NotNull;
 import py.edu.uc.lp32025.exception.PermisoDenegadoException;
-import com.fasterxml.jackson.annotation.JsonIgnore; // Importante para evitar ciclos infinitos en JSON
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "empleados_tiempo_completo")
 public class EmpleadoTiempoCompleto extends Persona implements Permisionable {
 
+    // ✅ LÓGICA MODIFICADA: Validación de Sueldo Mínimo
+    // Establecemos el mínimo legal vigente (aprox 2.798.309 Gs)
+    @NotNull(message = "El salario mensual es obligatorio")
+    @Min(value = 2798309, message = "El salario no puede ser inferior al sueldo mínimo legal (2.798.309 Gs)")
     @Column(name = "salario_mensual", precision = 10, scale = 2, nullable = false)
     private BigDecimal salarioMensual;
 
@@ -21,10 +28,12 @@ public class EmpleadoTiempoCompleto extends Persona implements Permisionable {
     @Column(name = "numero_empleado", nullable = false, unique = true)
     private String numeroEmpleado;
 
-    // ✅ Relación agregada para solucionar el error en DemoPermisionable y JPA
+    @Column(name = "dias_vacaciones_disponibles")
+    private Integer diasVacacionesDisponibles = 30;
+
     @ManyToOne
     @JoinColumn(name = "gerente_id")
-    @JsonIgnore // Evita que al pedir un empleado se traiga al gerente y se haga un bucle infinito
+    @JsonIgnore
     private Gerente gerente;
 
     // Getters y Setters
@@ -32,7 +41,12 @@ public class EmpleadoTiempoCompleto extends Persona implements Permisionable {
         return salarioMensual;
     }
 
+    // ✅ Validación manual en el setter por si se modifica post-creación
     public void setSalarioMensual(BigDecimal salarioMensual) {
+        BigDecimal sueldoMinimo = new BigDecimal("2798309");
+        if (salarioMensual != null && salarioMensual.compareTo(sueldoMinimo) < 0) {
+            throw new IllegalArgumentException("El salario (" + salarioMensual + ") no cumple con el sueldo mínimo legal: " + sueldoMinimo);
+        }
         this.salarioMensual = salarioMensual;
     }
 
@@ -60,6 +74,14 @@ public class EmpleadoTiempoCompleto extends Persona implements Permisionable {
         this.gerente = gerente;
     }
 
+    public Integer getDiasVacacionesDisponibles() {
+        return diasVacacionesDisponibles;
+    }
+
+    public void setDiasVacacionesDisponibles(Integer diasVacacionesDisponibles) {
+        this.diasVacacionesDisponibles = diasVacacionesDisponibles;
+    }
+
     @Override
     public String getNombreEmpleado() {
         return this.getNombre();
@@ -78,12 +100,26 @@ public class EmpleadoTiempoCompleto extends Persona implements Permisionable {
         LocalDate inicio = rangoFechas[0];
         LocalDate fin = rangoFechas[1];
 
-        long dias = java.time.temporal.ChronoUnit.DAYS.between(inicio, fin) + 1;
-        // Validación simple: mínimo 1 día
-        if (dias < 1) {
+        long diasSolicitadosLong = ChronoUnit.DAYS.between(inicio, fin) + 1;
+        int diasSolicitados = (int) diasSolicitadosLong;
+
+        if (diasSolicitados < 1) {
             throw new PermisoDenegadoException("Duración inválida", "Mínimo 1 día", "VACACIONES", getNombre(), getApellido(), getNumeroEmpleado());
         }
-        System.out.println("Vacaciones solicitadas por " + getNombre());
+
+        if (diasSolicitados > this.diasVacacionesDisponibles) {
+            throw new PermisoDenegadoException(
+                    "Saldo Insuficiente",
+                    "Solo le quedan " + this.diasVacacionesDisponibles + " días disponibles. Solicitó: " + diasSolicitados,
+                    "VACACIONES",
+                    getNombre(),
+                    getApellido(),
+                    getNumeroEmpleado()
+            );
+        }
+
+        this.diasVacacionesDisponibles = this.diasVacacionesDisponibles - diasSolicitados;
+        System.out.println("Vacaciones aprobadas para " + getNombre() + ". Días descontados: " + diasSolicitados + ". Nuevo saldo: " + this.diasVacacionesDisponibles);
     }
 
     @Override
@@ -99,7 +135,7 @@ public class EmpleadoTiempoCompleto extends Persona implements Permisionable {
     @Override
     public BigDecimal calcularDeducciones() {
         if (salarioMensual != null) {
-            return salarioMensual.multiply(BigDecimal.valueOf(0.09)); // 9% IPS ejemplo
+            return salarioMensual.multiply(BigDecimal.valueOf(0.09));
         }
         return BigDecimal.ZERO;
     }

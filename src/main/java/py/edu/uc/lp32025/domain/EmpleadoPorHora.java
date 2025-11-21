@@ -2,7 +2,6 @@
 package py.edu.uc.lp32025.domain;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 
 @Entity
@@ -15,7 +14,6 @@ public class EmpleadoPorHora extends Persona {
     @Column(name = "horas_trabajadas", nullable = false)
     private Integer horasTrabajadas;
 
-    // ✅ Nuevo campo para número de empleado
     @Column(name = "numero_empleado", nullable = false, unique = true)
     private String numeroEmpleado;
 
@@ -36,7 +34,6 @@ public class EmpleadoPorHora extends Persona {
         this.horasTrabajadas = horasTrabajadas;
     }
 
-    // ✅ Getter y Setter para numeroEmpleado
     public String getNumeroEmpleado() {
         return numeroEmpleado;
     }
@@ -86,20 +83,16 @@ public class EmpleadoPorHora extends Persona {
                 this.horasTrabajadas <= 80;
     }
 
-    // ✅ Implementación MOCK de los métodos de Mapeable (si aplica)
-    // (Puedes copiar la lógica de Persona o personalizarla)
+    // Implementación de Mapeable
     @Override
     public PosicionGps ubicarElemento() {
-        // Llama a la versión general de Persona y posiblemente ajusta ligeramente
         PosicionGps base = super.ubicarElemento();
-        // Por ejemplo, desplazar ligeramente basado en horas trabajadas
         double offsetHoras = (this.horasTrabajadas != null ? this.horasTrabajadas : 0) * 0.0001;
         return new PosicionGps(base.getLatitud() + offsetHoras, base.getLongitud() + offsetHoras);
     }
 
     @Override
     public Avatar obtenerImagen() {
-        // Llama a la versión general de Persona y personaliza el avatar
         Avatar base = super.obtenerImagen();
         return new Avatar(null, "EMP_PH_" + base.getNick());
     }

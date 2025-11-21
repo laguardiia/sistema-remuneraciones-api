@@ -23,7 +23,7 @@ public class EmpleadoTiempoCompletoController extends BaseController {
     private EmpleadoTiempoCompletoService empleadoService;
 
     @Autowired
-    private EmpleadoTiempoCompletoMapper empleadoMapper; // Inyección del nuevo Mapper
+    private EmpleadoTiempoCompletoMapper empleadoMapper;
 
     @GetMapping
     public ResponseEntity<List<EmpleadoTiempoCompleto>> listarTodos() {
@@ -31,24 +31,17 @@ public class EmpleadoTiempoCompletoController extends BaseController {
         return ok(empleadoService.findAll());
     }
 
-    // Endpoint para probar el Mapper (Retorna DTO en vez de Entidad)
     @GetMapping("/dto/{id}")
     public ResponseEntity<EmpleadoDTO> obtenerDtoPorId(@PathVariable Long id) {
+        // ✅ Si no existe, el servicio lanza excepción. No hace falta if null.
         EmpleadoTiempoCompleto empleado = empleadoService.findById(id);
-        if (empleado != null) {
-            // Usamos el mapper inyectado
-            return ok(empleadoMapper.mapToDto(empleado));
-        }
-        return notFound();
+        return ok(empleadoMapper.mapToDto(empleado));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<EmpleadoTiempoCompleto> obtenerPorId(@PathVariable Long id) {
-        EmpleadoTiempoCompleto empleado = empleadoService.findById(id);
-        if (empleado != null) {
-            return ok(empleado);
-        }
-        return notFound();
+        // ✅ Simplificado
+        return ok(empleadoService.findById(id));
     }
 
     @PostMapping
@@ -65,29 +58,26 @@ public class EmpleadoTiempoCompletoController extends BaseController {
 
     @GetMapping("/departamento/{departamento}")
     public ResponseEntity<List<EmpleadoTiempoCompleto>> findByDepartamento(@PathVariable String departamento) {
-        logger.info("Buscando empleados por departamento: {}", departamento);
         return ok(empleadoService.findByDepartamento(departamento));
     }
 
     @GetMapping("/salario-mayor/{salario}")
     public ResponseEntity<List<EmpleadoTiempoCompleto>> findBySalarioMayor(@PathVariable BigDecimal salario) {
-        logger.info("Buscando empleados con salario mayor a: {}", salario);
         return ok(empleadoService.findBySalarioMayor(salario));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarEmpleado(@PathVariable Long id) {
-        logger.info("Eliminando empleado ID: {}", id);
-        empleadoService.deleteById(id);
+        empleadoService.deleteById(id); // También lanza excepción si no existe
         return noContent();
     }
 
     @GetMapping("/{id}/impuestos")
     public ResponseEntity<ImpuestosResponseDTO> consultarImpuestos(@PathVariable Long id) {
+        // ✅ Aquí solucionamos la queja específica del profesor.
+        // Si el ID 2 es "Por Hora", findById lanzará EmpleadoNoEncontradoException
+        // y devolverá el ErrorDto correcto en lugar de un 404 genérico o null.
         EmpleadoTiempoCompleto empleado = empleadoService.obtenerDatosImpuestos(id);
-        if (empleado == null) {
-            return notFound();
-        }
 
         try {
             BigDecimal salarioBruto = empleado.getSalarioMensual();

@@ -2,118 +2,97 @@
 package py.edu.uc.lp32025.domain;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
+import py.edu.uc.lp32025.exception.FechaFuturaException;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "personas")
 @Inheritance(strategy = InheritanceType.JOINED)
-public abstract class Persona implements Mapeable { // ✅ Implementa la interfaz
+public abstract class Persona implements Mapeable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull(message = "El nombre no puede ser nulo")
+    @Column(name = "nombre", nullable = false)
     private String nombre;
+
+    @NotNull(message = "El apellido no puede ser nulo")
+    @Column(name = "apellido", nullable = false)
     private String apellido;
+
+    @Column(name = "email")
+    private String email;
+
+    @NotNull(message = "La fecha de nacimiento es obligatoria")
+    @Past(message = "La fecha de nacimiento debe ser en el pasado")
+    @Column(name = "fecha_nacimiento", nullable = false)
     private LocalDate fechaNacimiento;
 
-    // ✅ Validación: número de documento debe tener entre 1 y 20 dígitos
-    @Pattern(regexp = "^\\d{1,20}$", message = "El número de documento debe tener entre 1 y 20 dígitos")
+    @Column(name = "numero_documento", unique = true)
     private String numeroDocumento;
 
+    // Constructor vacío
+    public Persona() {}
+
     // Getters y Setters
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
 
-    public String getNombre() {
-        return nombre;
-    }
+    public String getApellido() { return apellido; }
+    public void setApellido(String apellido) { this.apellido = apellido; }
 
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public String getApellido() {
-        return apellido;
-    }
-
-    public void setApellido(String apellido) {
-        this.apellido = apellido;
-    }
-
-    public LocalDate getFechaNacimiento() {
-        return fechaNacimiento;
-    }
-
+    public LocalDate getFechaNacimiento() { return fechaNacimiento; }
     public void setFechaNacimiento(LocalDate fechaNacimiento) {
+        if (fechaNacimiento != null && fechaNacimiento.isAfter(LocalDate.now())) {
+            throw new FechaFuturaException("La fecha de nacimiento no puede ser futura: " + fechaNacimiento);
+        }
         this.fechaNacimiento = fechaNacimiento;
     }
 
-    public String getNumeroDocumento() {
-        return numeroDocumento;
+    public String getNumeroDocumento() { return numeroDocumento; }
+    public void setNumeroDocumento(String numeroDocumento) { this.numeroDocumento = numeroDocumento; }
+
+    // Métodos abstractos
+    public abstract BigDecimal calcularSalario();
+    public abstract BigDecimal calcularDeducciones();
+    public abstract boolean validarDatosEspecificos();
+
+    // Métodos comunes
+    public final BigDecimal calcularImpuestos() {
+        BigDecimal impuestoBase = calcularImpuestoBase();
+        BigDecimal deducciones = calcularDeducciones();
+        return impuestoBase.subtract(deducciones).max(BigDecimal.ZERO);
     }
 
-    public void setNumeroDocumento(String numeroDocumento) {
-        this.numeroDocumento = numeroDocumento;
+    public BigDecimal calcularImpuestoBase() {
+        return calcularSalario().multiply(BigDecimal.valueOf(0.10));
     }
 
-    // ✅ Implementación MOCK de los métodos de Mapeable
+    // ✅ Método agregado para solucionar el error de override en subclases
+    public String obtenerInformacionCompleta() {
+        return "ID: " + id + ", Nombre: " + nombre + " " + apellido + ", Doc: " + numeroDocumento;
+    }
+
+    // Implementación Mapeable
     @Override
     public PosicionGps ubicarElemento() {
-        // ✅ Retornar una posición MOCK basada en el ID o nombre
-        // Ejemplo: Generar coordenadas MOCK pseudoaleatorias basadas en el ID
-        double latBase = -25.2637; // Centro aproximado de Paraguay
-        double lonBase = -57.5833;
-        double offset = this.id != null ? this.id * 0.001 : 0.001; // Pequeño offset basado en ID
-
-        return new PosicionGps(latBase + offset, lonBase + offset);
+        return new PosicionGps(-25.2637, -57.5759);
     }
 
     @Override
     public Avatar obtenerImagen() {
-        // ✅ Retornar un Avatar MOCK basado en el nombre
-        String nickMock = this.nombre != null ? this.nombre.substring(0, Math.min(this.nombre.length(), 10)) : "Anonimo";
-        // En una implementación real, aquí cargarías la imagen desde un recurso o base de datos
-        // Para MOCK, simplemente creamos un Avatar con un nick y una imagen nula
-        return new Avatar(null, nickMock + "_" + (this.id != null ? this.id : "0"));
+        return new Avatar("https://ui-avatars.com/api/?name=" + this.nombre + "+" + this.apellido);
     }
-
-    // ✅ 1. Método abstracto para calcular salario
-    public abstract BigDecimal calcularSalario();
-
-    // ✅ 2. Método concreto que puede ser sobrescrito
-    public String obtenerInformacionCompleta() {
-        return "Nombre: " + nombre + " " + apellido +
-                ", Documento: " + numeroDocumento +
-                ", Fecha Nacimiento: " + fechaNacimiento;
-    }
-
-    // ✅ 3. Método template para calcular impuestos
-    public BigDecimal calcularImpuestos() {
-        BigDecimal impuestoBase = calcularImpuestoBase();
-        BigDecimal deducciones = calcularDeducciones();
-        BigDecimal impuestoFinal = impuestoBase.subtract(deducciones);
-
-        // Asegurar que no sea negativo
-        return impuestoFinal.max(BigDecimal.ZERO);
-    }
-
-    // ✅ 3b. Método concreto para calcular impuesto base (10% del salario)
-    public BigDecimal calcularImpuestoBase() {
-        BigDecimal salario = calcularSalario();
-        return salario.multiply(BigDecimal.valueOf(0.10));
-    }
-
-    // ✅ 3c. Método abstracto para calcular deducciones
-    public abstract BigDecimal calcularDeducciones();
-
-    // ✅ 4. Método abstracto para validar datos específicos
-    public abstract boolean validarDatosEspecificos();
 }

@@ -19,17 +19,13 @@ public class EmpleadoPorHoraController extends BaseController {
 
     @GetMapping
     public ResponseEntity<List<EmpleadoPorHora>> listarTodos() {
-        logger.info("Listando empleados por hora");
         return ok(empleadoService.findAll());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<EmpleadoPorHora> obtenerPorId(@PathVariable Long id) {
-        EmpleadoPorHora empleado = empleadoService.findById(id);
-        if (empleado != null) {
-            return ok(empleado);
-        }
-        return notFound();
+        // ✅ Ya no hay chequeo de null, el servicio lanza la excepción
+        return ok(empleadoService.findById(id));
     }
 
     @PostMapping
@@ -46,7 +42,6 @@ public class EmpleadoPorHoraController extends BaseController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarEmpleado(@PathVariable Long id) {
-        logger.info("Eliminando empleado por hora ID: {}", id);
         empleadoService.deleteById(id);
         return noContent();
     }

@@ -2,7 +2,6 @@
 package py.edu.uc.lp32025.domain;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -19,7 +18,6 @@ public class Contratista extends Persona {
     @Column(name = "fecha_fin_contrato", nullable = false)
     private LocalDate fechaFinContrato;
 
-    // ✅ Nuevo campo para número de empleado
     @Column(name = "numero_empleado", nullable = false, unique = true)
     private String numeroEmpleado;
 
@@ -48,7 +46,6 @@ public class Contratista extends Persona {
         this.fechaFinContrato = fechaFinContrato;
     }
 
-    // ✅ Getter y Setter para numeroEmpleado
     public String getNumeroEmpleado() {
         return numeroEmpleado;
     }
@@ -77,7 +74,6 @@ public class Contratista extends Persona {
 
     @Override
     public BigDecimal calcularDeducciones() {
-        // Sin deducciones (retorna 0)
         return BigDecimal.ZERO;
     }
 
@@ -91,7 +87,6 @@ public class Contratista extends Persona {
                 this.montoPorProyecto.compareTo(BigDecimal.ZERO) > 0;
     }
 
-    // ✅ Método contratoVigente() que verifique si el contrato no ha vencido
     public boolean contratoVigente() {
         if (fechaFinContrato != null) {
             return fechaFinContrato.isAfter(LocalDate.now());
@@ -99,20 +94,16 @@ public class Contratista extends Persona {
         return false;
     }
 
-    // ✅ Implementación MOCK de los métodos de Mapeable (si aplica)
-    // (Puedes copiar la lógica de Persona o personalizarla)
+    // Implementación de Mapeable
     @Override
     public PosicionGps ubicarElemento() {
-        // Llama a la versión general de Persona y posiblemente ajusta ligeramente
         PosicionGps base = super.ubicarElemento();
-        // Por ejemplo, desplazar ligeramente basado en proyectos completados
         double offsetProyectos = (this.proyectosCompletados != null ? this.proyectosCompletados : 0) * 0.00001;
         return new PosicionGps(base.getLatitud() + offsetProyectos, base.getLongitud() + offsetProyectos);
     }
 
     @Override
     public Avatar obtenerImagen() {
-        // Llama a la versión general de Persona y personaliza el avatar
         Avatar base = super.obtenerImagen();
         return new Avatar(null, "CONTR_" + base.getNick());
     }

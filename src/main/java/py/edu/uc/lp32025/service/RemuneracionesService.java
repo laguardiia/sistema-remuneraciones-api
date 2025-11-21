@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import py.edu.uc.lp32025.dto.ReporteEmpleadoDto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -37,7 +36,6 @@ public class RemuneracionesService {
     @Autowired
     private ContratistaRepository contratistaRepository;
 
-    // ✅ Inyección de los nuevos Mappers (Jerarquía)
     @Autowired
     private EmpleadoTiempoCompletoMapper tiempoCompletoMapper;
 
@@ -54,15 +52,12 @@ public class RemuneracionesService {
         List<EmpleadoDTO> todosLosEmpleados = new ArrayList<>();
 
         List<EmpleadoTiempoCompleto> empleadosTiempoCompleto = empleadoTiempoCompletoRepository.findAll();
-        // ✅ Uso del mapper inyectado (método genérico heredado)
         todosLosEmpleados.addAll(tiempoCompletoMapper.mapToDtoList(empleadosTiempoCompleto));
 
         List<EmpleadoPorHora> empleadosPorHora = empleadoPorHoraRepository.findAll();
-        // ✅ Uso del mapper inyectado
         todosLosEmpleados.addAll(porHoraMapper.mapToDtoList(empleadosPorHora));
 
         List<Contratista> contratistas = contratistaRepository.findAll();
-        // ✅ Uso del mapper inyectado
         todosLosEmpleados.addAll(contratistaMapper.mapToDtoList(contratistas));
 
         logger.info("Total de empleados DTOs obtenidos: {}", todosLosEmpleados.size());
@@ -114,12 +109,9 @@ public class RemuneracionesService {
         return dtos;
     }
 
-    // ... (Otros métodos de reporte se mantienen igual si no usan mappers estáticos) ...
-
     public Map<String, Object> calcularNominaConDiasSolicitados() {
         Map<String, Object> nominaConDias = new HashMap<>();
         nominaConDias.put("totalRemuneraciones", calcularTotalRemuneraciones());
-        // Simulación de datos
         nominaConDias.put("totalDiasSolicitados", 0L);
         return nominaConDias;
     }
@@ -138,10 +130,10 @@ public class RemuneracionesService {
         Permisionable permisionable = (Permisionable) empleado;
         long dias = java.time.temporal.ChronoUnit.DAYS.between(rangoFechas[0], rangoFechas[1]) + 1;
 
-        // Regla de Negocio: Solo Gerentes > 20 días
+        // Regla 1: Validación de negocio general (> 20 días)
         if (dias > 20 && !(empleado instanceof Gerente)) {
             throw new DiasInsuficientesException(
-                    "Empleado regular no puede solicitar más de 20 días",
+                    "Empleado regular no puede solicitar más de 20 días de una vez",
                     tipoSolicitud,
                     empleado.getNombre(),
                     empleado.getApellido(),
@@ -150,13 +142,19 @@ public class RemuneracionesService {
         }
 
         try {
+            // Regla 2: Validación de saldo y descuento (Ocurre dentro del método solicitarVacaciones)
             if ("VACACIONES".equalsIgnoreCase(tipoSolicitud)) {
                 permisionable.solicitarVacaciones(rangoFechas);
+
+                // ✅ IMPORTANTÍSIMO: Guardar el estado actualizado (días descontados) en la BD
+                personaRepository.save(empleado);
+                logger.info("Vacaciones registradas y saldo actualizado para empleado ID: {}", empleadoId);
             } else {
                 permisionable.solicitarPermiso(tipoSolicitud, rangoFechas, justificacion);
             }
         } catch (PermisoDenegadoException e) {
-            throw new RuntimeException(e.getMessage());
+            // Convertimos la excepción de dominio a Runtime o la relanzamos según convenga
+            throw new DiasInsuficientesException(e.getMessage(), tipoSolicitud, empleado.getNombre(), empleado.getApellido(), permisionable.getNumeroEmpleado());
         }
     }
 }

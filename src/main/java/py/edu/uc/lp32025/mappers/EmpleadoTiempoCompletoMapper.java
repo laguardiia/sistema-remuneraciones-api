@@ -17,11 +17,12 @@ public class EmpleadoTiempoCompletoMapper extends AbstractBaseMapper<EmpleadoTie
                 .nombre(entity.getNombre())
                 .apellido(entity.getApellido())
                 .fechaNacimiento(entity.getFechaNacimiento())
-                // CORREGIDO: Se usa numeroDocumento, no documento
                 .numeroDocumento(entity.getNumeroDocumento())
                 .numeroEmpleado(entity.getNumeroEmpleado())
                 .tipoEmpleado("EmpleadoTiempoCompleto")
                 .salario(entity.calcularSalario())
+                // ✅ Mapeamos el saldo disponible
+                .diasVacacionesDisponibles(entity.getDiasVacacionesDisponibles())
                 .build();
     }
 
@@ -34,12 +35,14 @@ public class EmpleadoTiempoCompletoMapper extends AbstractBaseMapper<EmpleadoTie
         entity.setNombre(dto.getNombre());
         entity.setApellido(dto.getApellido());
         entity.setFechaNacimiento(dto.getFechaNacimiento());
-        // CORREGIDO: Se usa setNumeroDocumento
         entity.setNumeroDocumento(dto.getNumeroDocumento());
         entity.setNumeroEmpleado(dto.getNumeroEmpleado());
 
-        // Nota: Campos como 'departamento' o 'salarioMensual' no están en el DTO base,
-        // por lo que se quedan nulos o se deberían manejar en lógica de negocio.
+        // Si el DTO trae saldo, lo seteamos, sino usa el default (30)
+        if (dto.getDiasVacacionesDisponibles() != null) {
+            entity.setDiasVacacionesDisponibles(dto.getDiasVacacionesDisponibles());
+        }
+
         return entity;
     }
 }

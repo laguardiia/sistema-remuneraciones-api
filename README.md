@@ -1,90 +1,155 @@
-# Trabajo Práctico Lenguajes de Programación 3 - 2025
+# Sistema de Gestión de Remuneraciones y RR. HH.
 
-## Descripción
+API REST para gestionar personal (empleados de tiempo completo, por hora, contratistas y gerentes), calcular nómina y validar reglas de negocio como las solicitudes de vacaciones. Construida con **Java 21** y **Spring Boot 3**.
 
-Este proyecto implementa una aplicación Spring Boot robusta para la gestión de recursos humanos. Demuestra el dominio de conceptos avanzados de Programación Orientada a Objetos y diseño de software, incluyendo:
+> 🎓 **Proyecto académico** desarrollado como Trabajo Práctico de la materia *Lenguajes de Programación 3*. El foco estuvo en aplicar Programación Orientada a Objetos y diseño por capas sobre un caso de negocio realista.
 
-* **Herencia y Polimorfismo:** Jerarquías complejas en el modelo de dominio (Personas, Empleados, Gerentes) y en capas técnicas (Controladores y Mappers).
-* **Interfaces y Contratos:** Uso de `Permisionable` y `Mapeable` para definir comportamientos transversales.
-* **Patrones de Diseño:** Uso de *Template Method* en mappers y *Strategy* implícito en los cálculos de nómina.
-* **Manejo de Errores Global:** Centralización de excepciones de negocio y técnicas.
-* **Persistencia:** Operaciones CRUD y procesamiento Batch (lotes).
-
-## Arquitectura del Sistema
-
-### 1. Capa de Dominio (Modelo)
-Jerarquía rica que modela la realidad del negocio:
-* **`Persona` (Abstracta)**: Entidad base.
-    * **`EmpleadoTiempoCompleto`**: Empleado regular.
-        * **`Gerente`**: Extiende de Tiempo Completo. Implementa `PermisionableGerente` para aprobar solicitudes.
-    * **`EmpleadoPorHora`**: Cálculo de salario basado en tarifa/hora.
-    * **`Contratista`**: Pago por proyecto y gestión de contratos.
-* **Interfaces**:
-    * `Permisionable`: Define la capacidad de solicitar vacaciones/permisos.
-    * `Mapeable`: Interfaz polimórfica implementada por `Persona`, `Vehiculo` y `Edificio` para geolocalización y avatares (Mock).
-
-### 2. Capa de Controladores (REST)
-Implementación de herencia para reutilización de código:
-* **`BaseController`**: Clase abstracta con utilidades de respuesta HTTP estandarizadas y logging.
-* **Controladores Específicos**: `GerenteController`, `EmpleadoTiempoCompletoController`, etc., heredan del base.
-* **`RemuneracionesController`**: Gestión de nómina y lógica de negocio transversal.
-
-### 3. Capa de Mappers (DTOs)
-Jerarquía de conversión de datos para desacoplar la API de la base de datos:
-* **`BaseMapper<E, D>`**: Interfaz genérica.
-* **`AbstractBaseMapper`**: Clase base que maneja conversiones de Listas automáticamente.
-* **Implementaciones**: `EmpleadoTiempoCompletoMapper`, `ExternalIntegrationMapper` (simulación de sistemas legacy), etc.
-
-### 4. Servicios y Lógica de Negocio
-* **`RemuneracionesService`**: Orquestador principal. Calcula nóminas polimórficas y valida reglas de negocio (ej. límite de 20 días de vacaciones).
-* **`NominaUtils`**: Utilitario para reportes JSON y cálculos estadísticos.
-* **Validaciones**: Reglas de negocio estrictas (ej. >20 días solo Gerentes) lanzando excepciones personalizadas (`DiasInsuficientesException`).
+![Java](https://img.shields.io/badge/Java-21-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F)
+![Maven](https://img.shields.io/badge/Build-Maven-C71A36)
+![H2](https://img.shields.io/badge/DB-H2-blue)
 
 ---
 
-## Instrucciones de Ejecución
+## El proyecto incluye
 
-### Prerrequisitos
+- **Herencia y polimorfismo** en el dominio (`Persona` → empleados, gerentes, contratistas) y en las capas técnicas (controladores y mappers).
+- **Interfaces como contratos transversales**: `Permisionable` (solicitar vacaciones/permisos) y `Mapeable` (geolocalización y avatar), implementada tanto por personas como por `Vehiculo` y `Edificio`.
+- **Patrones de diseño**: *Template Method* en la jerarquía de mappers y un enfoque tipo *Strategy* en el cálculo de salarios y deducciones según el tipo de persona.
+- **Manejo global de errores** con `@ControllerAdvice` y excepciones de negocio propias, que devuelven respuestas JSON consistentes.
+- **Validaciones** con Bean Validation (sueldo mínimo legal, fecha de nacimiento en el pasado) y reglas de dominio.
+- **Persistencia con JPA/Hibernate** (CRUD y carga por lotes) sobre H2.
+- **DTOs y mappers** para desacoplar la API del modelo persistente.
+
+## Stack
+
+| Área | Tecnología |
+|---|---|
+| Lenguaje | Java 21 |
+| Framework | Spring Boot 3.3.4 (Web, Data JPA, Validation) |
+| Base de datos | H2 (modo archivo) |
+| Build | Maven (incluye Maven Wrapper) |
+| Otros | Lombok, SLF4J/Logback |
+
+## Arquitectura
+
+Paquete base: `py.edu.uc.lp32025`
+
+```
+controller/   Endpoints REST (jerarquía con BaseController)
+service/      Lógica de negocio (RemuneracionesService, etc.)
+repository/   Acceso a datos con Spring Data JPA
+domain/       Entidades e interfaces del modelo
+dto/          Objetos de transferencia y respuestas de error
+mappers/      Conversión entidad <-> DTO (BaseMapper / AbstractBaseMapper)
+exception/    Excepciones de negocio + GlobalExceptionHandler
+utils/        NominaUtils, MapeableFactory, MapeableUtils
+demo/         Demos de consola para Mapeable y Permisionable
+```
+
+### Modelo de dominio
+
+```mermaid
+classDiagram
+    class Mapeable {
+        <<interface>>
+        +ubicarElemento() PosicionGps
+        +obtenerImagen() Avatar
+    }
+    class Permisionable {
+        <<interface>>
+        +solicitarVacaciones(rangoFechas)
+        +solicitarPermiso(tipo, rangoFechas, justificacion)
+    }
+    class PermisionableGerente {
+        <<interface>>
+        +aprobarSolicitud(...)
+    }
+    class Persona {
+        <<abstract>>
+        +calcularSalario()*
+        +calcularDeducciones()*
+        +validarDatosEspecificos()*
+    }
+
+    Mapeable <|.. Persona
+    Mapeable <|.. Vehiculo
+    Mapeable <|.. Edificio
+    Permisionable <|-- PermisionableGerente
+    Persona <|-- EmpleadoTiempoCompleto
+    Persona <|-- EmpleadoPorHora
+    Persona <|-- Contratista
+    Permisionable <|.. EmpleadoTiempoCompleto
+    EmpleadoTiempoCompleto <|-- Gerente
+    PermisionableGerente <|.. Gerente
+```
+
+## Reglas de negocio implementadas
+
+- **Sueldo mínimo legal**: un empleado de tiempo completo no puede registrarse con salario inferior a 2.798.309 Gs.
+- **Fecha de nacimiento** no puede ser futura (`FechaFuturaException`).
+- **Vacaciones**: cada empleado de tiempo completo arranca con 30 días disponibles, que se descuentan al aprobarse una solicitud.
+- **Límite por solicitud**: un empleado regular no puede pedir más de 20 días de una vez; los **gerentes** sí (`DiasInsuficientesException`).
+- **Saldo insuficiente**: si se piden más días de los disponibles, la solicitud se rechaza.
+- **Deducciones** distintas por tipo de persona (9 % para tiempo completo, 2 % para empleados por hora).
+
+## Cómo ejecutarlo
+
+### Requisitos
+
 - Java 21
-- Maven 3.6+
 - Git
 
-### Pasos para levantar el proyecto
+No hace falta instalar Maven: el proyecto incluye el wrapper (`mvnw`).
 
-1.  **Clonar el Repositorio**:
-    ```bash
-    git clone <URL_DEL_REPOSITORIO>
-    ```
+### Pasos
 
-2.  **Construir el Proyecto**:
-    ```bash
-    mvn clean install
-    ```
+```bash
+git clone https://github.com/<tu-usuario>/<nombre-del-repo>.git
+cd <nombre-del-repo>
 
-3.  **Ejecutar**:
-    ```bash
-    mvn spring-boot:run
-    ```
-    La aplicación iniciará en `http://localhost:8080`.
+# Linux / macOS
+./mvnw spring-boot:run
 
-4.  **Base de Datos (H2)**:
-    * La base de datos se guarda en archivo local: `C:/data/lp32025db`.
-    * Consola H2: `http://localhost:8080/h2-console`
-    * JDBC URL: `jdbc:h2:file:C:/data/lp32025db`
-    * User: `sa` / Password: `password`
+# Windows
+mvnw.cmd spring-boot:run
+```
 
----
+La API queda disponible en `http://localhost:8080`.
 
-## Guía de Pruebas y Endpoints (cURL)
+### Base de datos (H2)
 
-A continuación, se presentan los comandos para probar el flujo completo del sistema, desde la carga de datos hasta la validación de excepciones de negocio.
+Por defecto la base se guarda en un archivo local, configurado en `src/main/resources/application.properties`:
 
-### 1. Carga Inicial de Datos (Setup)
+```properties
+spring.datasource.url=jdbc:h2:file:C:/data/lp32025db
+```
 
-Primero, poblamos la base de datos utilizando la nueva jerarquía de controladores.
+- Consola H2: `http://localhost:8080/h2-console`
+- Usuario: `sa` · Contraseña: `password` (credenciales locales de desarrollo)
 
-**1.1. Crear un Gerente (ID: 1)**
-*Nota: Tiene autoridad para aprobar y derecho a >20 días de vacaciones.*
+## Endpoints principales
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/api/gerentes` | Crear gerente |
+| `POST` | `/api/empleados` | Crear empleado de tiempo completo |
+| `POST` | `/api/empleados/batch` | Carga por lotes de empleados |
+| `GET` | `/api/empleados/{id}/impuestos` | Cálculo de impuestos de un empleado |
+| `POST` | `/api/empleados-por-hora` | Crear empleado por hora |
+| `POST` | `/api/contratistas` | Crear contratista |
+| `GET` | `/api/remuneraciones/empleados` | Nómina completa (lista polimórfica de DTOs) |
+| `GET` | `/api/remuneraciones/total-remuneraciones` | Total de remuneraciones |
+| `GET` | `/api/remuneraciones/empleados/tipo/{tipo}` | Filtrar por `tiempocompleto`, `porhora` o `contratista` |
+| `GET` | `/api/remuneraciones/empleados/buscar?nombre=` | Buscar por nombre |
+| `POST` | `/api/remuneraciones/empleados/{id}/solicitar-dias` | Solicitar vacaciones o permisos |
+
+Los controladores `gerentes`, `empleados`, `empleados-por-hora`, `contratistas` y `personas` también exponen listado, consulta por ID y eliminación.
+
+## Ejemplo de uso
+
+**1. Crear un gerente**
+
 ```bash
 curl -X POST http://localhost:8080/api/gerentes \
   -H "Content-Type: application/json" \
@@ -100,7 +165,7 @@ curl -X POST http://localhost:8080/api/gerentes \
   }'
 ```
 
-**1.2. Crear Empleado Tiempo Completo (ID: 2)**
+**2. Crear un empleado de tiempo completo**
 
 ```bash
 curl -X POST http://localhost:8080/api/empleados \
@@ -116,100 +181,58 @@ curl -X POST http://localhost:8080/api/empleados \
   }'
 ```
 
-**1.3. Crear Empleado Por Hora (ID: 3)**
+**3. Listar la nómina completa**
 
 ```bash
-curl -X POST http://localhost:8080/api/empleados-por-hora \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nombre": "Pedro",
-    "apellido": "Parttime",
-    "fechaNacimiento": "1998-01-10",
-    "numeroDocumento": "30001",
-    "numeroEmpleado": "H001",
-    "tarifaPorHora": 50000,
-    "horasTrabajadas": 45
-  }'
+curl http://localhost:8080/api/remuneraciones/empleados
 ```
 
-**1.4. Crear Contratista (ID: 4)**
-
-```bash
-curl -X POST http://localhost:8080/api/contratistas \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nombre": "Laura",
-    "apellido": "Externa",
-    "fechaNacimiento": "1990-03-20",
-    "numeroDocumento": "40001",
-    "numeroEmpleado": "C001",
-    "montoPorProyecto": 5000000,
-    "proyectosCompletados": 2,
-    "fechaFinContrato": "2025-12-31"
-  }'
-```
-
-**1.5. Carga Batch (Lotes)**
-
-```bash
-curl -X POST http://localhost:8080/api/empleados/batch \
-  -H "Content-Type: application/json" \
-  -d '[
-    { "nombre": "Batch1", "apellido": "User", "fechaNacimiento": "1992-01-01", "numeroDocumento": "90001", "numeroEmpleado": "B001", "salarioMensual": 3000000, "departamento": "Ventas" },
-    { "nombre": "Batch2", "apellido": "User", "fechaNacimiento": "1993-01-01", "numeroDocumento": "90002", "numeroEmpleado": "B002", "salarioMensual": 3100000, "departamento": "Ventas" }
-  ]'
-```
-
------
-
-### 2\. Pruebas de Polimorfismo y Mappers
-
-**2.1. Listar Nómina Completa**
-*Prueba la inyección de la jerarquía de mappers. Devuelve una lista polimórfica de DTOs.*
-
-```bash
-curl -X GET http://localhost:8080/api/remuneraciones/empleados
-```
-
-**2.2. Consultar Impuestos (Solo Tiempo Completo)**
-*Calcula impuestos para el empleado ID 2.*
-
-```bash
-curl -X GET http://localhost:8080/api/empleados/2/impuestos
-```
-
------
-
-### 3\. Pruebas de Reglas de Negocio y Excepciones
-
-**3.1. Caso Éxito: Solicitud Válida**
-*Empleado regular solicita 15 días (permitido).*
+**4. Solicitar vacaciones (válido, 15 días)**
 
 ```bash
 curl -X POST "http://localhost:8080/api/remuneraciones/empleados/2/solicitar-dias?tipoSolicitud=VACACIONES&fechaInicio=2025-07-01&fechaFin=2025-07-15"
 ```
 
-**3.2. Caso Error: Excepción de Negocio (`DiasInsuficientesException`)**
-*Regla: Empleado regular NO puede pedir \> 20 días. Debe retornar error 400 personalizado.*
+**5. Regla de negocio: más de 20 días para un empleado regular → error 400**
 
 ```bash
 curl -X POST "http://localhost:8080/api/remuneraciones/empleados/2/solicitar-dias?tipoSolicitud=VACACIONES&fechaInicio=2025-08-01&fechaFin=2025-08-25"
 ```
 
-*Respuesta esperada:* JSON `ErrorDto` indicando que excede el límite.
-
-**3.3. Caso Éxito: Privilegio de Gerente**
-*El Gerente (ID 1) SÍ puede solicitar más de 20 días.*
-
-```bash
-curl -X POST "http://localhost:8080/api/remuneraciones/empleados/1/solicitar-dias?tipoSolicitud=VACACIONES&fechaInicio=2025-09-01&fechaFin=2025-09-25"
-```
-
-**3.4. Caso Error: Recurso No Encontrado (`EmpleadoNoEncontradoException`)**
+**6. Empleado inexistente → error 404**
 
 ```bash
 curl -X POST "http://localhost:8080/api/remuneraciones/empleados/999/solicitar-dias?tipoSolicitud=VACACIONES&fechaInicio=2025-01-01&fechaFin=2025-01-10"
 ```
 
-```
-```
+> Los IDs asumen una base vacía, con el gerente creado primero (ID 1) y el empleado después (ID 2).
+
+## Capturas de pruebas
+
+Las pruebas manuales se hicieron con un cliente HTTP (Insomnia). Todas las capturas están en la carpeta [`Pruebas/`](Pruebas/).
+
+| Nómina polimórfica | Cálculo de impuestos |
+|---|---|
+| ![Listar todos](Pruebas/Listar%20todos.png) | ![Calcular impuestos](Pruebas/Calcular%20impuestos.png) |
+
+| Solicitud válida de vacaciones | Error por días excedidos |
+|---|---|
+| ![Solicitud válida](Pruebas/Solicitud%20valida%20vacas.png) | ![Error solicitar vacaciones](Pruebas/Error%20solicitar%20vacas.png) |
+
+| Privilegio de gerente | Empleado inexistente |
+|---|---|
+| ![Vacaciones gerente](Pruebas/Vacaciones%20gerente.png) | ![Empleado inexistente](Pruebas/Solicita%20vacaciones%20un%20empleado%20que%20no%20existe.png) |
+
+## Limitaciones y posibles mejoras
+
+Al ser un trabajo académico, hay cosas que dejé fuera del alcance y que mejorarían el proyecto:
+
+- Tests automatizados: hoy solo existe el test de carga de contexto de Spring; las pruebas fueron manuales.
+- Autenticación y autorización (los "permisos" del dominio son reglas de negocio, no seguridad HTTP).
+- Documentación de la API con OpenAPI/Swagger.
+- Base de datos configurable por perfiles (H2 en desarrollo, PostgreSQL en producción) y variables de entorno para las credenciales.
+- Persistir el detalle de cada solicitud de vacaciones; actualmente solo se descuenta el saldo del empleado.
+
+## Autor
+
+**Sebastián Laguardia** · [GitHub](https://github.com/laguardiia) · [LinkedIn](https://www.linkedin.com/in/sebasti%C3%A1n-laguardia-300237369/)

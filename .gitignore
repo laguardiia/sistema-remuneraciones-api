@@ -58,3 +58,6 @@ Thumbs.db
 # --- Archivos Temporales ---
 *.tmp
 *.temp
+
+   # --- Base de datos local H2 ---
+   data/
